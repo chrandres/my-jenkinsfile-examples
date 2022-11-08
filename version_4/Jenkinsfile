@@ -1,0 +1,63 @@
+pipeline {
+  agent any
+  parameters {
+    choice(name: 'VERSION', choices: ['1','2','3','4'], description: '¿Que version vamos a usar hoy?.')
+    choice(name: 'DRYRUN', choices: ['si','no'], description: '¿Pusheamos a Docker?.')
+
+  }
+  stages {
+    stage('Build') {
+      steps {
+        dir("version_${VERSION}"){
+          sh "docker build -t ${env.RepoDockerHub}/${env.NameContainer}:v${VERSION}.${env.BUILD_NUMBER} ."
+        }
+      }
+    }
+
+    stage('CI') {
+      steps {
+        sh "docker run --rm ${env.RepoDockerHub}/${env.NameContainer}:v${VERSION}.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('CD') {
+      when { expression {"${DRYRUN}" == 'no'}}
+      steps {
+        script {
+          def approver = input message: '¿Push a Dockerhub?', submitterParameter: 'approver', ok: 'Si'
+        }
+        sh "echo $DockerhubCredentials_PSW | docker login -u $DockerhubCredentials_USR --password-stdin"
+        sh "docker push ${env.RepoDockerHub}/${env.NameContainer}:v${VERSION}.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('Dry run') {
+      when { expression {"${DRYRUN}" == 'si'}}
+      steps {
+        sh "echo Push a dockerhub no necesario"
+      }
+    }
+
+    stage('Eliminar imagen') {
+      steps {
+        sh "docker rmi ${env.RepoDockerHub}/${env.NameContainer}:v${VERSION}.${env.BUILD_NUMBER}"
+      }
+    }
+
+  }
+  
+  post {
+    always {
+      echo 'Pasando la escoba...'
+      sh " docker system prune -af"
+      sh " docker volume prune -f"
+      sh " docker network prune -f"
+      deleteDir() /* eliminar el workspace */
+    }
+  }
+  environment {
+    RepoDockerHub = 'adrabencheeduit'
+    NameContainer = 'nodeapp_edit'
+    DockerhubCredentials = credentials('dockerhub-user')
+  }
+}

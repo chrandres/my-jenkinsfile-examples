@@ -1,0 +1,51 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        sh "cd version_${env.jenkinsfile_version} && docker build -t ${env.RepoDockerHub}/${env.NameContainer}:v2.${env.BUILD_NUMBER} ."
+      }
+    }
+
+    stage('CI') {
+      steps {
+        sh "docker run --rm ${env.RepoDockerHub}/${env.NameContainer}:v2.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('Login to Dockerhub') {
+      steps {
+        sh "echo $Dockerhub_Credentials_PSW | docker login -u $Dockerhub_Credentials_USR --password-stdin"
+      }
+    }
+
+    stage('Push image to Dockerhub') {
+      steps {
+        sh "docker push ${env.RepoDockerHub}/${env.NameContainer}:v2.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('Clean dangling images') {
+      steps {
+        sh "docker rmi ${env.RepoDockerHub}/${env.NameContainer}:v2.${env.BUILD_NUMBER}"
+      }
+    }
+
+  }
+  
+  post {
+    always {
+      echo 'Pasando la escoba...'
+      sh " docker system prune -af"
+      sh " docker volume prune -f"
+      sh " docker network prune -f"
+      deleteDir() /* eliminar el workspace */
+    }
+  }
+  environment {
+    RepoDockerHub = 'adrabencheeduit'
+    NameContainer = 'nodeapp_edit'
+    Dockerhub_Credentials = credentials('dockerhub-user')
+    jenkinsfile_version = '2'
+  }
+}

@@ -1,0 +1,51 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        dir("version_${env.DockerVersion}"){
+          script {
+            imagen = docker.build("${env.RepoDockerHub}/${env.NameContainer}:v${env.DockerVersion}.${env.BUILD_NUMBER}")
+          }
+        }
+      }
+    }
+
+    stage('CI') {
+      steps {
+        sh "docker run --rm ${env.RepoDockerHub}/${env.NameContainer}:v${env.DockerVersion}.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('CD') {
+      steps {
+        script{
+          docker.withRegistry( '', 'dockerhub-user' ) { imagen.push() }
+        }
+      }
+    }
+
+    stage('Eliminar imagen') {
+      steps {
+        sh "docker rmi ${env.RepoDockerHub}/${env.NameContainer}:v${env.DockerVersion}.${env.BUILD_NUMBER}"
+      }
+    }
+
+  }
+  
+  post {
+    always {
+      echo 'Pasando la escoba...'
+      sh " docker system prune -af"
+      sh " docker volume prune -f"
+      sh " docker network prune -f"
+      deleteDir()
+    }
+  }
+  environment {
+    RepoDockerHub = 'adrabencheeduit'
+    NameContainer = 'nodeapp_edit'
+    DockerhubCredentials = 'dockerhub-user'
+    DockerVersion = '5'
+  }
+}

@@ -1,0 +1,41 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        sh "cd version_1 && docker build -t ${env.RepoDockerHub}/${env.NameContainer}:v1.${env.BUILD_NUMBER} ."
+      }
+    }
+
+    stage('CI') {
+      steps {
+        sh "docker run --rm ${env.RepoDockerHub}/${env.NameContainer}:v1.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('Login to Dockerhub') {
+      steps {
+        sh "echo $Dockerhub_Credentials_PSW | docker login -u $Dockerhub_Credentials_USR --password-stdin"
+      }
+    }
+
+    stage('Push image to Dockerhub') {
+      steps {
+        sh "docker push ${env.RepoDockerHub}/${env.NameContainer}:v1.${env.BUILD_NUMBER}"
+      }
+    }
+
+    stage('Clean dangling images') {
+      steps {
+        sh "docker rmi ${env.RepoDockerHub}/${env.NameContainer}:v1.${env.BUILD_NUMBER}"
+      }
+    }
+
+  }
+  
+  environment {
+    RepoDockerHub = 'adrabencheeduit'
+    NameContainer = 'nodeapp_edit'
+    Dockerhub_Credentials = credentials('dockerhub-user')
+  }
+}
