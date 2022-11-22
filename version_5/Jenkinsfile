@@ -20,7 +20,7 @@ pipeline {
     stage('CD') {
       steps {
         script{
-          docker.withRegistry( '', 'dockerhub-user' ) { imagen.push() }
+          docker.withRegistry( '', 'dockerhub_user' ) { imagen.push() }
         }
       }
     }
