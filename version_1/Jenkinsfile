@@ -35,7 +35,7 @@ pipeline {
   
   environment {
     RepoDockerHub = 'chrwandres'
-    NameContainer = 'nodeapp_edit'
+    NameContainer = 'pythontestapp'
     Dockerhub_Credentials = credentials('dockerhub_user')
   }
 }
