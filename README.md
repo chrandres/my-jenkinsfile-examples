@@ -1,3 +1,3 @@
 # What
 
-Example README 1
+Example README
